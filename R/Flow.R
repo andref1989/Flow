@@ -2235,10 +2235,14 @@ setGeneric('key', function(.Object) {standardGeneric('key')})
 #' @exportMethod key
 #' @export
 #' @author Marcin Imielinski
-setMethod('key', c('Job','data.table'), function(.Object)
+setMethod('key', 'Job', function(.Object)
     {
         return(data.table::key(.Object@outputs))
     })
+setMethod('key', 'data.table', function(.Object)
+    {
+        return(data.table::key(.Object@outputs))
+    })       
     
 setMethod('show', 'Job', function(object)
     {
