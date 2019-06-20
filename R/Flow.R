@@ -2241,7 +2241,7 @@ setMethod('key', 'Job', function(.Object)
     })
 setMethod('key', 'data.table', function(.Object)
     {
-        return(data.table::key(.Object@outputs))
+        return(data.table::key(.Object))
     })       
     
 setMethod('show', 'Job', function(object)
