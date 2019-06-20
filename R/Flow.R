@@ -2237,7 +2237,7 @@ setGeneric('key', function(.Object) {standardGeneric('key')})
 #' @author Marcin Imielinski
 setMethod('key', 'Job', function(.Object)
     {
-        return(key(.Object@outputs))
+        return(data.table::key(.Object@outputs))
     })
     
 setMethod('show', 'Job', function(object)
