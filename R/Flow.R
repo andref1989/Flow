@@ -2235,7 +2235,7 @@ setGeneric('key', function(.Object) {standardGeneric('key')})
 #' @exportMethod key
 #' @export
 #' @author Marcin Imielinski
-setMethod('key', 'Job', function(.Object)
+setMethod('key', c('Job','data.table', function(.Object)
     {
         return(key(.Object@outputs))
     })
