@@ -2266,7 +2266,7 @@ setGeneric('len', function(.Object) {standardGeneric('len')})
 #' @exportMethod len
 #' @export
 #' @author Marcin Imielinski
-setMethod('len', 'Job', function(.Object)
+setMethod('length', 'Job', function(.Object)
     {
         return(nrow(.Object@outputs))
     })
