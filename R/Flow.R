@@ -2259,7 +2259,7 @@ setMethod('show', 'Job', function(object)
 
 
 #' @export
-setGeneric('len', function(.Object) {standardGeneric('len')})
+setGeneric('length', function(.Object) {standardGeneric('length')})
 
 #' @name len
 #' @title returns length of this Job object
