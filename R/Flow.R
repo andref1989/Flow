@@ -1070,7 +1070,7 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
         if (length(args)>0){
             if (check.inputs)
                 {
-                    outdated = matrix(FALSE, nrow = length(new.object), ncol = length(args), dimnames = list(ids, names(args)))
+                    outdated = matrix(FALSE, nrow = len(new.object), ncol = length(args), dimnames = list(ids, names(args)))
                     cat('Checking input date stamps\n')
                     for (this.arg in names(args))
                         {
@@ -2259,14 +2259,14 @@ setMethod('show', 'Job', function(object)
 
 
 #' @export
-setGeneric('length', function(.Object) {standardGeneric('length')})
+setGeneric('len', function(.Object) {standardGeneric('len')})
 
 #' @name len
 #' @title returns length of this Job object
 #' @exportMethod len
 #' @export
 #' @author Marcin Imielinski
-setMethod('length', 'Job', function(.Object)
+setMethod('len', 'Job', function(.Object)
     {
         return(nrow(.Object@outputs))
     })
