@@ -812,7 +812,7 @@ setMethod('initialize', 'Job', function(.Object,
                 if (any(ix <- nchar(.Object@runinfo$status.info)>1)){
                     warning(sprintf('missing annotations resulting causing %s jobs to be not ready.\n Breakdown of detailed statuses (with # entities with each specific status):\n\t%s',
                                   sum(status(.Object)!='ready'),
-                                  paste(tabstring(table(.Object@runinfo$status.info[ix]), sep = ' '), collapse = ',')))
+                                  paste(.tabstring(table(.Object@runinfo$status.info[ix]), sep = ' '), collapse = ',')))
                 }
                 
                 
