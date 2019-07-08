@@ -812,7 +812,7 @@ setMethod('initialize', 'Job', function(.Object,
                 if (any(ix <- nchar(.Object@runinfo$status.info)>1)){
                     warning(sprintf('missing annotations resulting causing %s jobs to be not ready.\n Breakdown of detailed statuses (with # entities with each specific status):\n\t%s',
                                   sum(status(.Object)!='ready'),
-                                  paste(.tabstring(table(.Object@runinfo$status.info[ix]), sep = ' '), collapse = ',')))
+                                  paste(tabstring(table(.Object@runinfo$status.info[ix]), sep = ' '), collapse = ',')))
                 }
                 
                 
@@ -899,7 +899,7 @@ setMethod('initialize', 'Job', function(.Object,
     })
 
 
-.tabstring = function(tab, sep = ', '){
+tabstring = function(tab, sep = ', '){
         return(paste(names(tab), '(', tab, ')', sep = '', collapse = sep))        
     }
 
@@ -2252,7 +2252,7 @@ setMethod('show', 'Job', function(object)
         else
             estring = paste0(substr(paste(ids(object), collapse = ', '), 1, 20), '...')
         
-        cat(sprintf('Job on %s entities (%s) with rootdir %s from task %s using module %s version %s\nJob status: %s\n', length(object), estring, object@rootdir, object@task@name, object@task@module@name, object@task@module@stamp, .tabstring(table(status(object)))))
+        cat(sprintf('Job on %s entities (%s) with rootdir %s from task %s using module %s version %s\nJob status: %s\n', length(object), estring, object@rootdir, object@task@name, object@task@module@name, object@task@module@stamp, tabstring(table(status(object)))))
     })
 
 
