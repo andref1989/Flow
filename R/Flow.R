@@ -2352,7 +2352,205 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
     })
 
 
+.parse.info = function(jname, detailed = F, force = FALSE, mc.cores = 1)
+{      
 
+    
+    dir = file.dir(jname)
+    jname = file.name(jname)
+
+  
+  input.jname = jname
+  jname = gsub('\\.bsub\\.out$', '', gsub('\\.bsub\\.err$', '', jname))
+    names(input.jname) = jname
+        
+  if (length(jname)==0)    
+    outs = data.frame(jname = NA,
+      out.file = NA,
+      err.file = NA,
+      exit_flag = NA, term_flag = NA, started = NA, reported = NA, hours_elapsed = NA, max_mem = NA, cpu_time = NA,
+        success = NA,
+        stringsAsFactors = F)
+  else
+      {          
+        outs = data.frame(jname = gsub('\\.R$', '', jname),
+            out.file = paste(dir,'/', jname, '.bsub.out', sep = ''),
+            err.file = paste(dir, '/', jname, '.bsub.err', sep = ''),
+            exit_flag = NA, term_flag = NA, started = NA, reported = NA, hours_elapsed = NA, max_mem = NA, cpu_time = NA,
+            success = NA,
+            job_type = NA, 
+            stringsAsFactors = F);
+
+        fn = paste(dir, jname, '.bsub.out', sep = '')
+        fn.err = paste(dir, jname, '.bsub.err', sep = '')
+        fn.report = paste(dir, jname, '.bsub.report', sep = '')
+        fn.report.sge = paste(dir, jname, '.bsub.report', sep = '')
+        
+        mtime = data.table(out = file.info(fn)$mtime, err = file.info(fn.err)$mtime, report = file.info(fn.report)$mtime, report.sge = file.info(fn.report.sge)$mtime)
+        mtime[, report := pmax(report, report.sge, na.rm = TRUE)]
+
+        ## we can use the report if the report exists and is younger than both the err and out
+        ## or if (somehow) the err and out don't exist but the report does
+        fn.rep.ex = mtime[ ,ifelse(!is.na(report), ifelse(!is.na(err) | is.na(out), pmin(report>err, report>out, na.rm = TRUE), FALSE), FALSE)] & !force
+        
+        if (any(fn.rep.ex))
+            outs[fn.rep.ex, ] = do.call(rbind, lapply(fn.report[fn.rep.ex], read.delim, strings = FALSE))[, names(outs)]
+        
+        ## fn.ex these are the ones we need to parse again
+        fn.ex = (file.exists(fn) | file.exists(fn.err)) & !fn.rep.ex; 
+
+        if (!any(fn.ex))
+            return(outs)
+        
+        tmp = matrix(unlist(mclapply(which(fn.ex),
+            function(i)
+                {
+                    p = pipe(paste('tail -n 100', fn[i]))
+                    y = readLines(p);
+                    close(p)
+                    p = pipe(paste('head -n 100', fn[i]))
+                    sge = grep('FLOW', readLines(p), value = TRUE)
+                    close(p)                    
+                    if (any(grepl('^Sender.*LSF System', y))) ## LSF job
+                        {
+                            y = split(y, cumsum(grepl('^Sender', y)))
+                            y = y[[length(y)]]  ## picks "last" dump from lsf to this out file
+                            return(c('lsf',
+                                     c(grep('^Exited with', y, value = T), grep('^Successfully completed', y, value = T), '')[1],
+                                     c(grep('^TERM', y, value = T), '')[1],
+                                     c(gsub('Started at ', '', grep('^Started at', y, value = T)), '')[1],
+                                     c(gsub('Results reported ((at)|(on)) ', '', grep('^Results reported ((at)|(on))', y, value = T), ''))[1],
+                                     c(gsub('[ ]+CPU time[ ]+\\:[ ]+(.*)[ ]+\\S+', '\\1', grep('^[ ]+CPU time', y, value = T)), '')[1],
+                                     c(gsub('[ ]+Max Memory[ ]+\\:[ ]+(.*)', '\\1', grep('^[ ]+Max Memory', y, value = T)), '')[1],
+                                     c(gsub('[ ]+Max Swap[ ]+\\:[ ]+(.*)', '\\1', grep('^[ ]+Max Swap', y, value = T)), '')[1],
+                                        #                           c(gsub('[ ]+Max Memory[ ]+\\:[ ]+(.*)[ ]+\\S+', '\\1', grep('^[ ]+Max Memory', y, value = T)), '')[1],
+                                        #                           c(gsub('[ ]+Max Swap[ ]+\\:[ ]+(.*)[ ]+\\S+', '\\1', grep('^[ ]+Max Swap', y, value = T)), '')[1],
+                                     c(gsub('[ ]+Max Processes[ ]+\\:[ ]+(.*)\\S*', '\\1', grep('^[ ]+Max Processes', y, value = T)), '')[1],
+                                     c(gsub('[ ]+Max Threads[ ]+\\:[ ]+(.*)\\S*', '\\1', grep('^[ ]+Max Threads', y, value = T)), '')[1]
+                                     ))
+                        }
+                    else if (length(sge)>0)
+                        {
+                            fn.report.sge = paste(fn.report[i], '.sge', sep = '')
+                            jobnum = gsub('^FLOW.SGE.JOBID=(.*)', '\\1',  sge[1])
+                            p = pipe(paste('qacct -j', jobnum[length(jobnum)]))
+                            tmp = readLines(p)
+                            close(p)
+                            vals = structure(str_trim(gsub('^\\S+\\s+(.*)', '\\1', tmp, perl = TRUE)), names = gsub('(^\\S+) .*', '\\1', tmp, perl = TRUE))
+                            if (length(tmp)>0)                                
+                                {
+                                    write.table(as.data.frame(as.list(vals)), fn.report.sge, sep = '\t', quote = FALSE, row.names = FALSE)
+                                }
+                            else if (file.exists(fn.report.sge[i])) ## read from file if exists
+                                {
+                                    vals = unlist(read.delim(fn.report.sge, stringsAsFactors = FALSE))
+                                }
+
+                            cpuu= gsub('[^a-zA-Z]', '', vals['cpu'])
+                            memu= gsub('[^a-zA-Z]', '', vals['mem'])
+                            vmemu= gsub('[^a-zA-Z]', '', vals['maxvmem'])
+
+                            return(c('sge',
+                                     ifelse(vals['exit_status']=='0', 'Successfully completed.', vals['exit_status']),
+                                     vals['failed'],
+                                     vals['start_time'],
+                                     vals['end_time'],
+                                     as.numeric(gsub('[a-zA-Z]', '', vals['cpu']))*ifelse(grepl('[hH]', vmemu), 3600, ifelse(grepl('m', vmemu), 60, 1)),
+                                     as.numeric(gsub('[a-zA-Z]', '',  vals['mem']))/ifelse(grepl('MB', vmemu), 1000, ifelse(grepl('KB', vmemu), 1e6, 1)),
+                                     as.numeric(gsub('[a-zA-Z]', '', vals['maxvmem']))/ifelse(grepl('MB', vmemu), 1000, ifelse(grepl('KB', vmemu), 1e6, 1)),
+                                     vals['slots'],
+                                     vals['slots']
+                                     ))
+                        }
+                    else ## interpret job as locally run with a /usr/bin/time -v output
+                    {
+                            y = tryCatch(readLines(fn.err[i]), error = function(e) NULL)
+                            if (is.null(y))
+                                y = readLines(fn[i])
+                            ix = grep('Command being timed', y)
+                            if (length(ix)==0) ## fail
+                                return(rep(as.character(NA), 10))
+                            ix = ix[length(ix)] ### only get the last instance                            
+                            y = grep('\t.*', y[ix:length(y)][-1], value = TRUE)
+                            tmp = strsplit(y, '[\\:\t]')
+                            keyval = structure(str_trim(sapply(tmp, function(x) if (length(x)>2) x[[3]] else NA)),
+                                names = sapply(tmp, function(x) if (length(x)>1) x[[2]] else NA))
+                            etime = file.info(fn.err[i])$mtime
+                            stime = etime - as.numeric(keyval['User time (seconds)'])
+                            exit.status = ifelse(keyval['Exit status']==0, 'Successfully completed.', keyval['Exit status'])
+                            return(c('local', exit.status, NA, as.character(stime), as.character(etime),
+                                     keyval['User time (seconds)'], keyval['Maximum resident set size (kbytes)'], NA,
+                                     as.numeric(gsub('\\%', '', keyval['Percent of CPU this job got']))/100, NA))
+                        }
+                }, mc.cores = mc.cores)), ncol = 10, byrow = T)
+
+
+        
+        colnames(tmp) = c('job.type', 'exit.flag', 'term.flag', 'started', 'reported', 'cpu.time', 'max.memory', 'max.swap', 'max.cpu', 'max.thr')
+        
+        .parse.mem = function(mem)
+            {
+                ix = !is.na(mem)
+                out.mem = rep(NA, length(mem))
+                if (any(ix))
+                    {
+                        mem = mem[ix]
+                        tmp = strsplit(mem, '[ ]+')
+                        tmp.mem = suppressWarnings(as.numeric(sapply(tmp, function(x) x[1])))
+                        tmp.mem.units = sapply(tmp, function(x) x[2])
+                        out.mem[ix] = ifelse(is.na(tmp.mem.units), tmp.mem/1e6/4, ## assume time output, which is in kbytes * 4
+                                   ifelse(tmp.mem.units == 'MB', tmp.mem/1e3,
+                                          ifelse(tmp.mem.units == 'KB', tmp.mem/1e6, 
+                                                 tmp.mem)))
+
+                    }
+                return(out.mem)                
+            }
+
+        ## normalize to GB
+        TIME.FORMAT1 = '%a %b %d %H:%M:%S %Y';
+        TIME.FORMAT2 = '%Y-%m-%d %H:%M:%S';
+        
+        outs$job_type[fn.ex] = tmp[, 'job.type']
+        outs$exit_flag[fn.ex] = tmp[, 'exit.flag']
+        outs$term_flag[fn.ex] = tmp[, 'term.flag']
+        outs$started[fn.ex] = ifelse( outs$job_type[fn.ex]%in% c('lsf','sge'),
+                         as.character(as.POSIXct(strptime(tmp[, 'started'], TIME.FORMAT1))),
+                        as.character(as.POSIXct(strptime(tmp[, 'started'], TIME.FORMAT2))))
+         outs$reported[fn.ex] = ifelse(outs$job_type[fn.ex]%in% c('lsf','sge'),
+                        as.character(as.POSIXct(strptime(tmp[, 'reported'], TIME.FORMAT1))),
+                        as.character(as.POSIXct(strptime(tmp[, 'reported'], TIME.FORMAT2))))
+        outs$hours_elapsed = as.numeric(as.POSIXct(outs$reported)-as.POSIXct(outs$started), units = 'hours')
+        outs$cpu_time[fn.ex] = suppressWarnings(as.numeric(tmp[, 'cpu.time']))
+        outs$max_mem[fn.ex] = ifelse(outs$job_type[fn.ex] == 'sge', as.numeric(tmp[, 'max.memory']), .parse.mem(tmp[, 'max.memory']))
+
+        if (detailed)
+            {
+                outs$max_swap[fn.ex] = tmp[, 'max.swap']
+                outs$max_processes[fn.ex] = tmp[, 'max.processes']      
+                outs$max_threads[fn.ex] = tmp[, 'max.threads']
+            }
+        outs$success = ifelse(!is.na(outs$exit_flag), grepl('Success', outs$exit_flag), NA)
+        rownames(outs) = dedup(outs$jname)
+
+        ## cache row slices of this report table in the output directories
+        ## for easier downstream access
+        for (i in which(fn.ex))
+            write.table(outs[i, ], fn.report[i], sep = '\t', quote = F, row.names = FALSE)
+    }
+
+    
+  outs = as.data.table(outs)
+  
+  if (!is.null(input.jname))
+      outs = outs[, key := input.jname[jname]]
+  else
+      outs = outs[, key := jname]
+
+    setkey(outs, 'key')
+
+  return(outs)  
+}
 
 #' @name concat
 #' @exportMethod concat
