@@ -2093,46 +2093,68 @@ setMethod('qjobs', 'Job', function(.Object)
             })
 
 
-## this is a stub that is based on the qjobs function. It has not been tested, and will need to be modified to work with the output from squeue
-## #' @export
-## setGeneric('sjobs', function(.Object, ...) {standardGeneric('sjobs')})
-## #' @name sjobs
-## #' @title Tracks down any slurm jobs associated with this Job object using an sjobs query (warning can be slow)
-## #' @exportMethod sjobs
-## #' @export
-## #' @author Peter Waltman
-## setMethod('sjobs', 'Job', function(.Object) {
-    
-##     fn.jids = sapply(outdir(.Object), function(x) paste(x, 'sge.jobid', sep = '/'))
-##     ix = file.exists(fn.jids)
-##     out1 = out2 = NULL
-##     nms = c('jobid','prior','ntckt','name','user','project','department','state','cpu','mem','io','tckts','ovrts','otckt','ftckt','stckt','share','queue','slots')
+ #' @export
+ setGeneric('sjobs', function(.Object, ...) {standardGeneric('sjobs')})
+ #' @name sjobs
+ #' @title Tracks down any slurm jobs associated with this Job object using an sjobs query (warning can be slow)
+ #' @exportMethod sjobs
+ #' @export
+ #' @author Andre Forbes
+ setMethod('sjobs', 'Job', function(.Object) {
 
-##     out = runinfo(.Object)[, key(.Object), with = FALSE]
-##     for (nm in nms)
-##         out[[nm]] = as.character(NA)
-    
-##     if (any(ix)) {
-##         jids = rep(NA, length(.Object))
-##         jids[ix] = sapply(fn.jids[ix], function(x) readLines(x)[1])
-##         p = pipe('squeue -ext')
-##         tab = strsplit(str_trim(readLines(p)), '\\s+')
-##         close(p)
-##         iix = sapply(tab, length)<=length(nms) & sapply(tab, length)>14
-        
-##         if (length(tab)>0) {
-##             tab = lapply(tab, function(x) x[1:length(nms)])
-##             tmp = as.data.table(matrix(unlist(tab[iix]), ncol = length(nms), byrow = TRUE))
-##             setnames(tmp, nms)
-##             setkey(tmp, jobid)
-##             out = cbind(runinfo(.Object)[, key(.Object), with = FALSE], tmp[jids, ])
-##             na = is.na(out$state)
-##             if (any(na))
-##                 out$jobid[na] = NA
-##         }
-##     }
-##     return(out)            
-## })
+     fn.jids = sapply(outdir(.Object), function(x) paste(x, 'slurm.jobid', sep = '/'))
+     ix = file.exists(fn.jids)
+     out1 = out2 = NULL
+     nms = c('jobid','partition','name','user','state','elapsed','timelim','nodes','reason')
+
+     out = runinfo(.Object)[, key(.Object), with = FALSE]
+     for (nm in nms)
+         out[[nm]] = as.character(NA)
+
+     if (any(ix)) {
+         jids = rep(NA, length(.Object))
+         jids[ix] = sapply(fn.jids[ix], function(x) readLines(x)[1])
+         p = pipe('squeue -l')
+         tab = strsplit(str_trim(readLines(p)), '\\s+')
+         tab <- tab[2:length(tab)]
+         close(p)
+         iix = sapply(tab, length)<=length(nms) & sapply(tab, length)>4
+
+         if (length(tab)>0) {
+             tab = lapply(tab, function(x) x[1:length(nms)])
+             tmp = as.data.table(matrix(unlist(tab[iix]), ncol = length(nms), byrow = TRUE))
+             setnames(tmp, nms)
+             setkey(tmp, jobid)
+             out = cbind(runinfo(.Object)[, key(.Object), with = FALSE], tmp[jids, ])
+             na = is.na(out$state)
+             if (any(na))
+                 out$jobid[na] = NA
+         }
+     }
+     return(out)
+ })
+
+
+#' @export
+ setGeneric('skill', function(.Object, ...) {standardGeneric('skill')})
+
+#' #' @name skill
+#' #' @title Kills any running Slurm jobs associated with this Job object
+#' #' @exportMethod skill
+#' #' @export
+#' #' @author Andre Forbes
+ setMethod('skill', 'Job', function(.Object, jid = NULL)
+     {
+         qj = sjobs(.Object)
+         ix = !is.na(qj$jobid)
+         if (any(ix))
+             system(paste(c('scancel', qj$jobid[ix]), collapse = ' '))
+         else
+             cat('No queued or running Slurm jobs to kill\n')
+     })
+
+
+
 
 
 #' @export
@@ -2171,26 +2193,6 @@ setMethod('bkill', 'Job', function(.Object, jid = NULL)
         cat('')
     })
 
-
-
-#' @export
-setGeneric('skill', function(.Object, ...) {standardGeneric('skill')})
-
-#' @name skill
-#' @title Kills any running SGE jobs associated with this Job object
-#' @exportMethod skill
-#' @export
-#' @author Peter Waltman
-setMethod('skill', 'Job', function(.Object, jid = NULL)
-    {
-        
-        qj = qjobs(.Object)
-        ix = !is.na(qj$jobid)
-        if (any(ix))
-            system(paste(c('scancel', qj$jobid[ix]), collapse = ' '))
-        else
-            cat('No queued or running SGE jobs to kill\n')
-    })
 
 
 
