@@ -2092,7 +2092,6 @@ setMethod('qjobs', 'Job', function(.Object)
                 return(out)            
             })
 
-
  #' @export
  setGeneric('sjobs', function(.Object, ...) {standardGeneric('sjobs')})
  #' @name sjobs
@@ -2114,6 +2113,8 @@ setMethod('qjobs', 'Job', function(.Object)
      if (any(ix)) {
          jids = rep(NA, length(.Object))
          jids[ix] = sapply(fn.jids[ix], function(x) readLines(x)[1])
+         jids <- unlist(strsplit(jids," "))
+         jids <- jids[seq(4,length(jids),4)]
          p = pipe('squeue -l -u $USER')
          tab = strsplit(str_trim(readLines(p)), '\\s+')
          tab <- tab[2:length(tab)]
@@ -2135,6 +2136,7 @@ setMethod('qjobs', 'Job', function(.Object)
  })
 
 
+ 
 #' @export
  setGeneric('skill', function(.Object, ...) {standardGeneric('skill')})
 
