@@ -2114,7 +2114,7 @@ setMethod('qjobs', 'Job', function(.Object)
      if (any(ix)) {
          jids = rep(NA, length(.Object))
          jids[ix] = sapply(fn.jids[ix], function(x) readLines(x)[1])
-         p = pipe('squeue -l')
+         p = pipe('squeue -l -u $USER')
          tab = strsplit(str_trim(readLines(p)), '\\s+')
          tab <- tab[2:length(tab)]
          close(p)
