@@ -49,16 +49,16 @@ S4 class for \code{Job}
 Class \code{Job} defines a set of nrow(entities) firehose jobs "myjobs" which is an instantiation of an Task combined with
 one or more rows of an (keyed) annotation data.table entities.  An Job is created from an Task + data.table of annotations, and (optional)
 output directory (otherwise made default).   Once created, several things can be done with an Job:  It's local command line tasks
-can be extracted with cmd(myjobs), it's bsub tasks can be extracted with bcmd(myjobs). These can be dumped to a file or executed 
-directory from R via a system command on the cmd(), bcmd(), qcmd() output, or run with run(myjobs),  brun(myjobs), qrun(myjobs)...  
+can be extracted with cmd(myjobs), it's bsub tasks can be extracted with bcmd(myjobs). These can be dumped to a file or executed
+directory from R via a system command on the cmd(), bcmd(), qcmd() output, or run with run(myjobs),  brun(myjobs), qrun(myjobs)...
 
 Once jobs are running / completing the status of jobs can be checked with update(.Object).
 In this case the timestamp of each output will be updated and the relevant annotations will be
 updated after querying the output directories.  The data.table associated with the Job can be accessed
 using the runinfo command i.e. runinfo(.Object)
 
-As jobs complete, one may want to update a "master" data.table with the outputs of Jobs.  This can 
-be useful for manual running of larger workflows to which a given task contributes. 
+As jobs complete, one may want to update a "master" data.table with the outputs of Jobs.  This can
+be useful for manual running of larger workflows to which a given task contributes.
 
 #@exportMethod merge
 
@@ -81,7 +81,7 @@ Replacing a subset of Job object with another (compatible Job object)
   \item{runinfo}{keyed data.table with length(.Object) rows containing columns
            $outdir = output directory for each job
            $queue = character specifying the queue on which this job should be run
-           $mem = numeric specifying G of max memory to run this job with 
+           $mem = numeric specifying G of max memory to run this job with
            $cmd = command line to execute job locally
            $bcmd = command line to submit job to farm
            $status = character that is either "completed", "ready", "not ready", or "outdated" if time
