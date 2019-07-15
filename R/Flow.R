@@ -2314,7 +2314,7 @@ srun_cmd = function( script.fn,
     out_cmd = paste("sbatch --export=ALL -o", qjout);
     out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-e ", qjerr)))    
     out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-p ", queue)))
-    #if (!is.null(mem)) out_cmd = paste(out_cmd, " --mem=", mem, "G", sep = "");
+    if (!is.null(mem)) out_cmd = paste(out_cmd, " --mem=", mem, "G", sep = "");
     if (!is.null(jgroup)) out_cmd = paste(out_cmd, " --gid= ", sub('^\\/*', '/', jgroup), sep="" )
     if (!is.null(cwd)) out_cmd = paste(out_cmd, " --workdir=", cwd, sep="" )
     if (!is.null(qjname)) out_cmd = paste(out_cmd, " --job-name ", jlabel)
