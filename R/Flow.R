@@ -1845,7 +1845,7 @@ setMethod('srun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
         scmds = scmd(.Object, all = all)
         res = lapply(scmds, function(x) {p = pipe(x); out = readLines(p); close(p); return(out)})
         jobids = sapply(res, function(x) gsub('Your job (\\d+) .*', '\\1', x))
-        mapply(function(d,j) writeLines(j, paste0(d,'/sge.jobid')), outdir(.Object)[names(scmds)], jobids) ## save last jobids
+        mapply(function(d,j) writeLines(j, paste0(d,'/slurm.jobid')), outdir(.Object)[names(scmds)], jobids) ## save last jobids
         writeLines(paste('Deploying', jobids, 'for entity', ids(.Object)))
     })
 
